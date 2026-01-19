@@ -1,6 +1,6 @@
-use crate::{ArrayElem, Selectable};
 use crate::backend::{AttributeOp, Backend, BackendData, DataContainer, GroupOp, ScalarType};
 use crate::data::{ArrayData, array::DynArray, array::utils::ExtendableDataset};
+use crate::{ArrayElem, Selectable};
 
 use super::{CsrNonCanonical, DynCscMatrix, DynCsrMatrix, DynCsrNonCanonical};
 use anyhow::{Context, Result, bail};
@@ -329,12 +329,13 @@ impl<D: RemoveAxis, T: BackendData> ArrayChunk for Array<T, D> {
         G: GroupOp<B>,
     {
         let mut iter = iter.peekable();
-        let chunk_size = if let Some(n) = D::NDIM {
-            vec![1000; n].into()
-        } else {
-            let n = iter.peek().unwrap().ndim();
-            vec![1000; n].into()
-        };
+        let chunk_size = iter
+            .peek()
+            .unwrap()
+            .shape()
+            .iter()
+            .map(|&x| x.min(1000))
+            .collect();
         let mut data: ExtendableDataset<B, T> =
             ExtendableDataset::with_capacity(location, name, chunk_size)?;
 

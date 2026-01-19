@@ -25,7 +25,7 @@ impl<B: Backend, T: BackendData> ExtendableDataset<B, T> {
     where
         G: GroupOp<B>,
     {
-        let block_size = vec![1000; capacity.ndim()].into();
+        let block_size = alloc_block_size_with_shape(&capacity, 16384);
         let dataset = group.new_empty_dataset::<T>(
             name,
             &capacity,
@@ -584,4 +584,29 @@ pub(crate) fn array_major_minor_index_default<T: Default + Clone>(
 ) -> Array2<T>
 {
     array_major_minor_index(major_idx, minor_idx, data, &T::default())
+}
+
+pub(crate) fn alloc_block_size_with_shape(shape: &Shape, total: usize) -> Shape {
+    let mut block_size = vec![0; shape.ndim()];
+    let mut n = shape.ndim();
+
+    let mut bs = get_block_size(n, total);
+    let mut visit_order: Vec<_> = (0..n).collect();
+    visit_order.sort_by_key(|&i| shape[i]);
+    for i in visit_order {
+        let s = shape[i];
+        if s < bs {
+            block_size[i] = s;
+            n -= 1;
+            bs = get_block_size(n, total / s);
+        } else {
+            block_size[i] = bs;
+        }
+    }
+
+    block_size.into()
+}
+
+fn get_block_size(n: usize, total: usize) -> usize {
+    (total as f64).powf(1.0 / n as f64).ceil() as usize
 }

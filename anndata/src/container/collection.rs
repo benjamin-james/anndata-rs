@@ -5,7 +5,7 @@ use crate::{
     data::*,
 };
 
-use anyhow::{Result, bail, ensure};
+use anyhow::{Context, Result, bail, ensure};
 use itertools::Itertools;
 use log::warn;
 use parking_lot::{Mutex, MutexGuard};
@@ -351,7 +351,10 @@ impl<B: Backend> InnerAxisArrays<B> {
         if let Some(elem) = self.get(key) {
             elem.clear()?;
         }
-        let elem = ArrayElem::try_from(ArrayChunk::write_by_chunk(data, &self.container, key)?)?;
+        let elem = ArrayChunk::write_by_chunk(data, &self.container, key).with_context(|| {
+            format!("failed to write data to AxisArrays with key: '{}'", key)
+        })?;
+        let elem = ArrayElem::try_from(elem)?;
 
         let shape = { elem.inner().shape().clone() };
         match self.axis {
