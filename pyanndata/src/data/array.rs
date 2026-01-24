@@ -4,7 +4,7 @@ use anndata::data::{CsrNonCanonical, DynArray, DynCscMatrix, DynCsrMatrix, DynCs
 use nalgebra_sparse::{CscMatrix, CsrMatrix};
 use ndarray::ArrayD;
 use numpy::{IntoPyArray, PyArrayMethods, PyReadonlyArrayDyn};
-use pyo3::{exceptions::PyTypeError, prelude::*};
+use pyo3::{IntoPyObjectExt, exceptions::PyTypeError, prelude::*};
 
 macro_rules! proc_py_numeric {
     ($dtype:expr, $data:expr, $ty_anno:tt) => {
@@ -254,7 +254,10 @@ pub(super) fn arr_to_py<'py>(arr: DynArray, py: Python<'py>) -> PyResult<Bound<'
         DynArray::F32(arr) => arr.into_pyarray(py).into_any(),
         DynArray::F64(arr) => arr.into_pyarray(py).into_any(),
         DynArray::Bool(arr) => arr.into_pyarray(py).into_any(),
-        DynArray::String(_) => todo!(),
+        DynArray::String(arr) => arr
+            .mapv(|x| x.into_py_any(py).unwrap())
+            .into_pyarray(py)
+            .into_any(),
     };
     Ok(res)
 }
@@ -294,7 +297,10 @@ pub(super) fn csr_to_py<'py>(csr: DynCsrMatrix, py: Python<'py>) -> PyResult<Bou
     }
 }
 
-pub(super) fn csr_noncanonical_to_py<'py>(csr: DynCsrNonCanonical, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+pub(super) fn csr_noncanonical_to_py<'py>(
+    csr: DynCsrNonCanonical,
+    py: Python<'py>,
+) -> PyResult<Bound<'py, PyAny>> {
     fn helper<'py, T: numpy::Element>(
         csr: CsrNonCanonical<T>,
         py: Python<'py>,
