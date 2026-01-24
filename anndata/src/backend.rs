@@ -24,7 +24,7 @@ pub struct WriteConfig {
 impl Default for WriteConfig {
     fn default() -> Self {
         Self {
-            compression: Some(Compression::Zst(3)),
+            compression: Some(Compression::Zst(5)),
             block_size: None,
         }
     }
@@ -338,7 +338,7 @@ impl<B: Backend> DataContainer<B> {
             "dataframe" => DataType::DataFrame,
             "mapping" | "dict" => DataType::Mapping,
             "nullable-integer" | "nullable-boolean" => DataType::NullableArray,
-            ty => bail!("Unsupported type '{}'", ty),
+            ty => bail!("the anndata file contains an unsupported encoding type: '{}'", ty),
         };
         Ok(ty)
     }

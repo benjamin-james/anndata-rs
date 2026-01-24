@@ -1,6 +1,9 @@
 use anndata::{
     backend::*,
-    data::{DynArray, DynCowArray, DynScalar, SelectInfoBounds, SelectInfoElem, SelectInfoElemBounds, Shape},
+    data::{
+        DynArray, DynCowArray, DynScalar, SelectInfoBounds, SelectInfoElem, SelectInfoElemBounds,
+        Shape,
+    },
 };
 
 use anyhow::{bail, Ok, Result};
@@ -10,9 +13,9 @@ use hdf5::{
     types::{FloatSize, TypeDescriptor, VarLenUnicode},
     File, Group, H5Type, Location, Selection,
 };
+use itertools::{EitherOrBoth, Itertools};
 use ndarray::{Array, ArrayD, ArrayView, CowArray, Dimension, IxDyn, SliceInfo, SliceInfoElem};
-use std::ops::Deref;
-use std::ops::Index;
+use std::ops::{Deref, Index};
 use std::path::{Path, PathBuf};
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -129,7 +132,7 @@ fn new_dataset<T: BackendData>(
             Compression::Zst(lvl) => match dtype {
                 ScalarType::String => builder.deflate(3),
                 _ => builder.blosc_zstd(lvl, hdf5::filters::BloscShuffle::Byte),
-            }
+            },
         }
     } else {
         builder
@@ -306,8 +309,15 @@ impl DatasetOp<H5> for H5Dataset {
                 let select: Vec<_> = info
                     .as_ref()
                     .into_iter()
-                    .zip(shape)
-                    .map(|(x, n)| SelectInfoElemBounds::new(x.as_ref(), *n))
+                    .zip_longest(shape)
+                    .map(|ty| match ty {
+                        EitherOrBoth::Both(x, n) => SelectInfoElemBounds::new(x.as_ref(), *n),
+                        EitherOrBoth::Right(n) => SelectInfoElemBounds::new(
+                            &SelectInfoElem::Slice(anndata::data::slice::SLICE_FULL),
+                            *n,
+                        ),
+                        _ => panic!("inconsistent selection length"),
+                    })
                     .collect();
                 let new_shape = select.iter().map(|x| x.len()).collect::<Vec<_>>();
                 ArrayD::from_shape_fn(new_shape, |idx| {
@@ -542,14 +552,25 @@ impl AttributeOp<H5> for H5Group {
         match value {
             Value::Null => Ok(()),
             Value::Bool(b) => write_scalar_attr(self, name, *b),
-            Value::Number(n) => n.as_u64().map(|i| write_scalar_attr(self, name, i))
+            Value::Number(n) => n
+                .as_u64()
+                .map(|i| write_scalar_attr(self, name, i))
                 .or_else(|| n.as_i64().map(|i| write_scalar_attr(self, name, i)))
                 .or_else(|| n.as_f64().map(|i| write_scalar_attr(self, name, i)))
                 .expect("number cannot be converted to u64, i64 or f64"),
             Value::String(s) => write_scalar_attr(self, name, s.clone()),
-            Value::Array(_) => json_to_ndarray(value, |x| x.as_i64())?.map(|x| write_array_attr(self, name, &x))
-                .or_else(|| json_to_ndarray(value, |x| x.as_f64()).unwrap().map(|x| write_array_attr(self, name, &x)))
-                .or_else(|| json_to_ndarray(value, |x| x.as_str().map(|s| s.to_string())).unwrap().map(|x| write_array_attr(self, name, &x)))
+            Value::Array(_) => json_to_ndarray(value, |x| x.as_i64())?
+                .map(|x| write_array_attr(self, name, &x))
+                .or_else(|| {
+                    json_to_ndarray(value, |x| x.as_f64())
+                        .unwrap()
+                        .map(|x| write_array_attr(self, name, &x))
+                })
+                .or_else(|| {
+                    json_to_ndarray(value, |x| x.as_str().map(|s| s.to_string()))
+                        .unwrap()
+                        .map(|x| write_array_attr(self, name, &x))
+                })
                 .expect("array cannot be converted to i64, f64 or string"),
             Value::Object(_) => bail!("attributes of object type are not supported"),
         }
@@ -577,14 +598,25 @@ impl AttributeOp<H5> for H5Dataset {
         match value {
             Value::Null => Ok(()),
             Value::Bool(b) => write_scalar_attr(self, name, *b),
-            Value::Number(n) => n.as_u64().map(|i| write_scalar_attr(self, name, i))
+            Value::Number(n) => n
+                .as_u64()
+                .map(|i| write_scalar_attr(self, name, i))
                 .or_else(|| n.as_i64().map(|i| write_scalar_attr(self, name, i)))
                 .or_else(|| n.as_f64().map(|i| write_scalar_attr(self, name, i)))
                 .expect("number cannot be converted to u64, i64 or f64"),
             Value::String(s) => write_scalar_attr(self, name, s.clone()),
-            Value::Array(_) => json_to_ndarray(value, |x| x.as_i64())?.map(|x| write_array_attr(self, name, &x))
-                .or_else(|| json_to_ndarray(value, |x| x.as_f64()).unwrap().map(|x| write_array_attr(self, name, &x)))
-                .or_else(|| json_to_ndarray(value, |x| x.as_str().map(|s| s.to_string())).unwrap().map(|x| write_array_attr(self, name, &x)))
+            Value::Array(_) => json_to_ndarray(value, |x| x.as_i64())?
+                .map(|x| write_array_attr(self, name, &x))
+                .or_else(|| {
+                    json_to_ndarray(value, |x| x.as_f64())
+                        .unwrap()
+                        .map(|x| write_array_attr(self, name, &x))
+                })
+                .or_else(|| {
+                    json_to_ndarray(value, |x| x.as_str().map(|s| s.to_string()))
+                        .unwrap()
+                        .map(|x| write_array_attr(self, name, &x))
+                })
                 .expect("array cannot be converted to i64, f64 or string"),
             Value::Object(_) => bail!("attributes of object type are not supported"),
         }
@@ -616,14 +648,15 @@ fn read_scalar_attr(loc: &Location, name: &str) -> Result<Value> {
     Ok(result)
 }
 
-fn read_array_attr(
-    loc: &Location,
-    name: &str,
-) -> Result<Value> {
+fn read_array_attr(loc: &Location, name: &str) -> Result<Value> {
     let attr = loc.attr(name)?;
     let result = match attr.dtype()?.to_descriptor()? {
-        TypeDescriptor::VarLenUnicode => ndarray_to_json(&attr.read::<VarLenUnicode, IxDyn>()?.mapv(|x| x.to_string())),
-        TypeDescriptor::VarLenAscii => ndarray_to_json(&attr.read::<VarLenUnicode, IxDyn>()?.mapv(|x| x.to_string())),
+        TypeDescriptor::VarLenUnicode => {
+            ndarray_to_json(&attr.read::<VarLenUnicode, IxDyn>()?.mapv(|x| x.to_string()))
+        }
+        TypeDescriptor::VarLenAscii => {
+            ndarray_to_json(&attr.read::<VarLenUnicode, IxDyn>()?.mapv(|x| x.to_string()))
+        }
         TypeDescriptor::Boolean => ndarray_to_json(&attr.read::<bool, IxDyn>()?),
         TypeDescriptor::Unsigned(_) => ndarray_to_json(&attr.read::<u64, IxDyn>()?),
         TypeDescriptor::Integer(_) => ndarray_to_json(&attr.read::<i64, IxDyn>()?),
@@ -654,7 +687,8 @@ where
         DynCowArray::F64(x) => loc.new_attr_builder().with_data(x.view()).create(name)?,
         DynCowArray::Bool(x) => loc.new_attr_builder().with_data(x.view()).create(name)?,
         DynCowArray::String(x) => {
-            let data: Array<VarLenUnicode, Dim> = x.map(|x| x.parse().unwrap()).into_dimensionality()?;
+            let data: Array<VarLenUnicode, Dim> =
+                x.map(|x| x.parse().unwrap()).into_dimensionality()?;
             loc.new_attr_builder().with_data(data.view()).create(name)?
         }
     };
@@ -766,9 +800,10 @@ fn ndarray_to_json<T: Into<Value> + Clone>(array: &ArrayD<T>) -> Value {
             vec.into()
         } else {
             // Recursive case: split along the first axis and apply recursively
-            let nested_vec = array.outer_iter().map(|sub_array| {
-                recursive_convert(&sub_array.to_owned().into_dyn())
-            }).collect::<Vec<Value>>();
+            let nested_vec = array
+                .outer_iter()
+                .map(|sub_array| recursive_convert(&sub_array.to_owned().into_dyn()))
+                .collect::<Vec<Value>>();
             Value::Array(nested_vec)
         }
     }
