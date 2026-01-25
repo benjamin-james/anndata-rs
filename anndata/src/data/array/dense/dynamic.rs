@@ -644,3 +644,73 @@ impl<D: Dimension> ArrayConvert<Array<String, D>> for DynArray {
         }
     }
 }
+
+impl ArrayArithmetic for DynArray {
+    fn sum(&self) -> f64 {
+        match self {
+            DynArray::I8(arr) => ArrayArithmetic::sum(arr),
+            DynArray::I16(arr) => ArrayArithmetic::sum(arr),
+            DynArray::I32(arr) => ArrayArithmetic::sum(arr),
+            DynArray::I64(arr) => ArrayArithmetic::sum(arr),
+            DynArray::U8(arr) => ArrayArithmetic::sum(arr),
+            DynArray::U16(arr) => ArrayArithmetic::sum(arr),
+            DynArray::U32(arr) => ArrayArithmetic::sum(arr),
+            DynArray::U64(arr) => ArrayArithmetic::sum(arr),
+            DynArray::F32(arr) => ArrayArithmetic::sum(arr),
+            DynArray::F64(arr) => ArrayArithmetic::sum(arr),
+            DynArray::Bool(_) => panic!("Cannot compute sum for Bool array"),
+            DynArray::String(_) => panic!("Cannot compute sum for String array"),
+        }
+    }
+
+    fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
+        match self {
+            DynArray::I8(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynArray::I16(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynArray::I32(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynArray::I64(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynArray::U8(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynArray::U16(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynArray::U32(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynArray::U64(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynArray::F32(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynArray::F64(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynArray::Bool(_) => bail!("Cannot compute sum for Bool array"),
+            DynArray::String(_) => bail!("Cannot compute sum for String array"),
+        }
+    }
+
+    fn min(&self) -> f64 {
+        match self {
+            DynArray::I8(arr) => ArrayArithmetic::min(arr),
+            DynArray::I16(arr) => ArrayArithmetic::min(arr),
+            DynArray::I32(arr) => ArrayArithmetic::min(arr),
+            DynArray::I64(arr) => ArrayArithmetic::min(arr),
+            DynArray::U8(arr) => ArrayArithmetic::min(arr),
+            DynArray::U16(arr) => ArrayArithmetic::min(arr),
+            DynArray::U32(arr) => ArrayArithmetic::min(arr),
+            DynArray::U64(arr) => ArrayArithmetic::min(arr),
+            DynArray::F32(arr) => ArrayArithmetic::min(arr),
+            DynArray::F64(arr) => ArrayArithmetic::min(arr),
+            DynArray::Bool(_) => panic!("Cannot compute min for Bool array"),
+            DynArray::String(_) => panic!("Cannot compute min for String array"),
+        }
+    }
+
+    fn max(&self) -> f64 {
+        match self {
+            DynArray::I8(arr) => ArrayArithmetic::max(arr),
+            DynArray::I16(arr) => ArrayArithmetic::max(arr),
+            DynArray::I32(arr) => ArrayArithmetic::max(arr),
+            DynArray::I64(arr) => ArrayArithmetic::max(arr),
+            DynArray::U8(arr) => ArrayArithmetic::max(arr),
+            DynArray::U16(arr) => ArrayArithmetic::max(arr),
+            DynArray::U32(arr) => ArrayArithmetic::max(arr),
+            DynArray::U64(arr) => ArrayArithmetic::max(arr),
+            DynArray::F32(arr) => ArrayArithmetic::max(arr),
+            DynArray::F64(arr) => ArrayArithmetic::max(arr),
+            DynArray::Bool(_) => panic!("Cannot compute max for Bool array"),
+            DynArray::String(_) => panic!("Cannot compute max for String array"),
+        }
+    }
+}

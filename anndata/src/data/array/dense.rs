@@ -1,6 +1,7 @@
 mod dynamic;
 
 pub use dynamic::{ArrayConvert, DynArray, DynCowArray, DynScalar};
+use num::NumCast;
 
 use crate::{
     backend::*,
@@ -297,5 +298,31 @@ impl ReadableArray for CategoricalArray {
         let codes = codes.mapv(|x| if x < 0 { None } else { Some(x as u32) });
         let categories = group.open_dataset("categories")?.read_array()?;
         Ok(CategoricalArray { codes, categories })
+    }
+}
+
+impl<T: BackendData + num::ToPrimitive + Clone, D: Dimension + RemoveAxis> ArrayArithmetic for Array<T, D> {
+    fn sum(&self) -> f64 {
+        self.iter().map(|x| <f64 as NumCast>::from(x.clone()).unwrap()).sum()
+    }
+
+    fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
+        if axis >= self.ndim() {
+            anyhow::bail!("axis {} out of bounds for array of dimension {}", axis, self.ndim());
+        }
+        let arr = self.map(|x| <f64 as NumCast>::from(x.clone()).unwrap());
+        Ok(Array::sum_axis(&arr, Axis(axis)).into_dyn())
+    }
+
+    fn min(&self) -> f64 {
+        self.iter()
+            .map(|x| <f64 as NumCast>::from(x.clone()).unwrap())
+            .fold(f64::INFINITY, f64::min)
+    }
+
+    fn max(&self) -> f64 {
+        self.iter()
+            .map(|x| <f64 as NumCast>::from(x.clone()).unwrap())
+            .fold(f64::NEG_INFINITY, f64::max)
     }
 }

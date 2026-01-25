@@ -7,6 +7,7 @@ use crate::data::{
 };
 
 use anyhow::Result;
+use ndarray::ArrayD;
 use serde_json::Value;
 
 pub(crate) const MAPPING_ENCODING: MetaData = MetaData {
@@ -174,3 +175,43 @@ pub trait ReadableArray: Readable {
 }
 
 pub trait WritableArray: Writable {}
+
+/// Trait for common array arithmetic operations
+/// Supports operations like sum, mean, min, and max
+pub trait ArrayArithmetic: HasShape {
+    /// Compute the sum of all elements in the array
+    fn sum(&self) -> f64;
+
+    /// Compute the mean of all elements in the array
+    fn mean(&self) -> f64 {
+        let total_elements: usize = self.shape().as_ref().iter().product();
+        if total_elements == 0 {
+            0.0
+        } else {
+            self.sum() / total_elements as f64
+        }
+    }
+
+    /// Compute the sum along a specific axis
+    /// Returns a vector of sums for each slice along that axis
+    fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>>;
+
+    /// Compute the mean along a specific axis
+    /// Returns a vector of means for each slice along that axis
+    fn mean_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
+        let mut sum_result = self.sum_axis(axis)?;
+        let axis_size = self.shape()[axis];
+        if axis_size == 0 {
+            sum_result.fill(0.0);
+        } else {
+            sum_result.mapv_inplace(|x| x / axis_size as f64);
+        }
+        Ok(sum_result)
+    }
+
+    /// Compute the minimum value in the array
+    fn min(&self) -> f64;
+
+    /// Compute the maximum value in the array
+    fn max(&self) -> f64;
+}

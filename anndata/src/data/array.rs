@@ -15,7 +15,7 @@ use crate::backend::*;
 use crate::data::utils::from_csr_data;
 use crate::data::{data_traits::*, DataType};
 
-use ::ndarray::{Array, Ix1, RemoveAxis};
+use ::ndarray::{Array, ArrayD, Ix1, RemoveAxis};
 use anyhow::{bail, Result};
 use nalgebra_sparse::csc::CscMatrix;
 use nalgebra_sparse::csr::CsrMatrix;
@@ -312,6 +312,48 @@ impl Stackable for ArrayData {
                 <DataFrame as Stackable>::vstack(iter.map(|x| x.try_into().unwrap()))
                     .map(|x| x.into())
             }
+        }
+    }
+}
+
+impl ArrayArithmetic for ArrayData {
+    fn sum(&self) -> f64 {
+        match self {
+            ArrayData::Array(data) => ArrayArithmetic::sum(data),
+            ArrayData::CsrMatrix(data) => ArrayArithmetic::sum(data),
+            ArrayData::CsrNonCanonical(_) => todo!(),
+            ArrayData::CscMatrix(_) => todo!(),
+            ArrayData::DataFrame(_) => panic!("Cannot compute sum for DataFrame"),
+        }
+    }
+
+    fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
+        match self {
+            ArrayData::Array(data) => ArrayArithmetic::sum_axis(data, axis),
+            ArrayData::CsrMatrix(data) => ArrayArithmetic::sum_axis(data, axis),
+            ArrayData::CsrNonCanonical(_) => todo!(),
+            ArrayData::CscMatrix(_) => todo!(),
+            ArrayData::DataFrame(_) => bail!("Cannot compute sum for DataFrame"),
+        }
+    }
+
+    fn min(&self) -> f64 {
+        match self {
+            ArrayData::Array(data) => ArrayArithmetic::min(data),
+            ArrayData::CsrMatrix(data) => ArrayArithmetic::min(data),
+            ArrayData::CsrNonCanonical(_) => todo!(),
+            ArrayData::CscMatrix(_) => todo!(),
+            ArrayData::DataFrame(_) => panic!("Cannot compute min for DataFrame"),
+        }
+    }
+
+    fn max(&self) -> f64 {
+        match self {
+            ArrayData::Array(data) => ArrayArithmetic::max(data),
+            ArrayData::CsrMatrix(data) => ArrayArithmetic::max(data),
+            ArrayData::CsrNonCanonical(_) => todo!(),
+            ArrayData::CscMatrix(_) => todo!(),
+            ArrayData::DataFrame(_) => panic!("Cannot compute max for DataFrame"),
         }
     }
 }

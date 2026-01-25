@@ -2,16 +2,17 @@ use std::collections::HashMap;
 
 use crate::backend::*;
 use crate::data::{
+    SelectInfoBounds, SelectInfoElemBounds,
     array::utils::{cs_major_index, cs_major_minor_index, cs_major_slice},
     data_traits::*,
     slice::{SelectInfoElem, Shape},
-    SelectInfoBounds, SelectInfoElemBounds,
 };
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use nalgebra_sparse::csr::CsrMatrix;
 use nalgebra_sparse::pattern::SparsityPattern;
-use ndarray::Ix1;
+use ndarray::{Array1, ArrayD, Ix1};
+use num::{NumCast, ToPrimitive};
 
 use super::super::slice::SliceBounds;
 
@@ -321,8 +322,14 @@ impl<T: BackendData> Readable for CsrMatrix<T> {
                 .read_array_cast::<_, Ix1>()?
                 .into_raw_vec_and_offset()
                 .0;
-            CsrMatrix::try_from_csr_data(shape[0] as usize, shape[1] as usize, indptr, indices, data)
-                .map_err(|e| anyhow!("cannot read csr matrix: {}", e))
+            CsrMatrix::try_from_csr_data(
+                shape[0] as usize,
+                shape[1] as usize,
+                indptr,
+                indices,
+                data,
+            )
+            .map_err(|e| anyhow!("cannot read csr matrix: {}", e))
         } else {
             bail!(
                 "cannot read csr matrix from container with data type {:?}",
@@ -404,6 +411,54 @@ impl<T: BackendData> ReadableArray for CsrMatrix<T> {
 impl<T: BackendData> WritableArray for &CsrMatrix<T> {}
 impl<T: BackendData> WritableArray for CsrMatrix<T> {}
 
+impl<T: BackendData + Clone + ToPrimitive> ArrayArithmetic for CsrMatrix<T> {
+    fn sum(&self) -> f64 {
+        self.values().iter().map(|x| <f64 as NumCast>::from(x.clone()).unwrap()).sum()
+    }
+
+    fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
+        if axis >= 2 {
+            anyhow::bail!("axis {} out of bounds", axis);
+        }
+
+        match axis {
+            0 => {
+                // Sum along rows (sum each column)
+                let mut col_sums = vec![0.0; self.ncols()];
+                self.row_iter().for_each(|row| {
+                    row.col_indices()
+                        .iter()
+                        .zip(row.values())
+                        .for_each(|(&col, val)| {
+                            col_sums[col] += <f64 as NumCast>::from(val.clone()).unwrap();
+                        });
+                });
+                Ok(Array1::from(col_sums).into_dyn())
+            }
+            1 => Ok(self
+                .row_iter()
+                .map(|row| row.values().iter().map(|v| <f64 as NumCast>::from(v.clone()).unwrap()).sum())
+                .collect::<Array1<f64>>()
+                .into_dyn()),
+            _ => anyhow::bail!("axis {} is out of bounds for 2D array", axis),
+        }
+    }
+
+    fn min(&self) -> f64 {
+        self.values()
+            .iter()
+            .map(|x| <f64 as NumCast>::from(x.clone()).unwrap())
+            .fold(f64::INFINITY, f64::min)
+    }
+
+    fn max(&self) -> f64 {
+        self.values()
+            .iter()
+            .map(|x| <f64 as NumCast>::from(x.clone()).unwrap())
+            .fold(f64::NEG_INFINITY, f64::max)
+    }
+}
+
 #[cfg(test)]
 mod csr_matrix_index_tests {
     use super::*;
@@ -411,8 +466,8 @@ mod csr_matrix_index_tests {
     use nalgebra::base::DMatrix;
     use nalgebra_sparse::CooMatrix;
     use ndarray::Array;
-    use ndarray_rand::rand_distr::Uniform;
     use ndarray_rand::RandomExt;
+    use ndarray_rand::rand_distr::Uniform;
 
     fn csr_select<I1, I2>(csr: &CsrMatrix<i64>, row_indices: I1, col_indices: I2) -> CsrMatrix<i64>
     where
@@ -503,7 +558,8 @@ mod csr_matrix_index_tests {
             let values = Array::random(nnz, Uniform::new(1, 10000)).to_vec();
 
             let csr_matrix: CsrMatrix<i64> =
-                (&CooMatrix::try_from_triplets(n, m, row_indices, col_indices, values).unwrap()).into();
+                (&CooMatrix::try_from_triplets(n, m, row_indices, col_indices, values).unwrap())
+                    .into();
 
             // Row slice
             assert_eq!(

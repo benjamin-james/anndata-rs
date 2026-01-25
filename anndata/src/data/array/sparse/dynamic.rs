@@ -1,3 +1,5 @@
+use core::panic;
+
 use crate::backend::*;
 use crate::data::ArrayConvert;
 use crate::data::{
@@ -8,6 +10,7 @@ use crate::data::{
 use anyhow::{bail, Result};
 use nalgebra_sparse::csc::CscMatrix;
 use nalgebra_sparse::csr::CsrMatrix;
+use ndarray::ArrayD;
 use num::FromPrimitive;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -152,6 +155,76 @@ impl Stackable for DynCsrMatrix {
             DynCsrMatrix::String(_) => Ok(DynCsrMatrix::String(CsrMatrix::<String>::vstack(
                 iter.map(|x| x.try_into().unwrap()),
             )?)),
+        }
+    }
+}
+
+impl ArrayArithmetic for DynCsrMatrix {
+    fn sum(&self) -> f64 {
+        match self {
+            DynCsrMatrix::I8(arr) => ArrayArithmetic::sum(arr),
+            DynCsrMatrix::I16(arr) => ArrayArithmetic::sum(arr),
+            DynCsrMatrix::I32(arr) => ArrayArithmetic::sum(arr),
+            DynCsrMatrix::I64(arr) => ArrayArithmetic::sum(arr),
+            DynCsrMatrix::U8(arr) => ArrayArithmetic::sum(arr),
+            DynCsrMatrix::U16(arr) => ArrayArithmetic::sum(arr),
+            DynCsrMatrix::U32(arr) => ArrayArithmetic::sum(arr),
+            DynCsrMatrix::U64(arr) => ArrayArithmetic::sum(arr),
+            DynCsrMatrix::F32(arr) => ArrayArithmetic::sum(arr),
+            DynCsrMatrix::F64(arr) => ArrayArithmetic::sum(arr),
+            DynCsrMatrix::Bool(_) => panic!("Cannot compute sum for Bool csr matrix"),
+            DynCsrMatrix::String(_) => panic!("Cannot compute sum for String csr matrix"),
+        }
+    }
+
+    fn sum_axis(&self, axis: usize) -> Result<ArrayD<f64>> {
+        match self {
+            DynCsrMatrix::I8(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynCsrMatrix::I16(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynCsrMatrix::I32(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynCsrMatrix::I64(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynCsrMatrix::U8(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynCsrMatrix::U16(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynCsrMatrix::U32(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynCsrMatrix::U64(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynCsrMatrix::F32(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynCsrMatrix::F64(arr) => ArrayArithmetic::sum_axis(arr, axis),
+            DynCsrMatrix::Bool(_) => panic!("Cannot compute sum for Bool csr matrix"),
+            DynCsrMatrix::String(_) => bail!("Cannot compute sum for String csr matrix"),
+        }
+    }
+
+    fn min(&self) -> f64 {
+        match self {
+            DynCsrMatrix::I8(arr) => ArrayArithmetic::min(arr),
+            DynCsrMatrix::I16(arr) => ArrayArithmetic::min(arr),
+            DynCsrMatrix::I32(arr) => ArrayArithmetic::min(arr),
+            DynCsrMatrix::I64(arr) => ArrayArithmetic::min(arr),
+            DynCsrMatrix::U8(arr) => ArrayArithmetic::min(arr),
+            DynCsrMatrix::U16(arr) => ArrayArithmetic::min(arr),
+            DynCsrMatrix::U32(arr) => ArrayArithmetic::min(arr),
+            DynCsrMatrix::U64(arr) => ArrayArithmetic::min(arr),
+            DynCsrMatrix::F32(arr) => ArrayArithmetic::min(arr),
+            DynCsrMatrix::F64(arr) => ArrayArithmetic::min(arr),
+            DynCsrMatrix::Bool(_) => panic!("Cannot compute min for Bool csr matrix"),
+            DynCsrMatrix::String(_) => panic!("Cannot compute min for String csr matrix"),
+        }
+    }
+
+    fn max(&self) -> f64 {
+        match self {
+            DynCsrMatrix::I8(arr) => ArrayArithmetic::max(arr),
+            DynCsrMatrix::I16(arr) => ArrayArithmetic::max(arr),
+            DynCsrMatrix::I32(arr) => ArrayArithmetic::max(arr),
+            DynCsrMatrix::I64(arr) => ArrayArithmetic::max(arr),
+            DynCsrMatrix::U8(arr) => ArrayArithmetic::max(arr),
+            DynCsrMatrix::U16(arr) => ArrayArithmetic::max(arr),
+            DynCsrMatrix::U32(arr) => ArrayArithmetic::max(arr),
+            DynCsrMatrix::U64(arr) => ArrayArithmetic::max(arr),
+            DynCsrMatrix::F32(arr) => ArrayArithmetic::max(arr),
+            DynCsrMatrix::F64(arr) => ArrayArithmetic::max(arr),
+            DynCsrMatrix::Bool(_) => panic!("Cannot compute max for Bool csr matrix"),
+            DynCsrMatrix::String(_) => panic!("Cannot compute max for String csr matrix"),
         }
     }
 }
