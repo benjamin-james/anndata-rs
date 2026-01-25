@@ -8,6 +8,7 @@ use crate::{
 
 use anyhow::{bail, ensure, Result};
 use ndarray::{arr0, Array, ArrayD, ArrayView, CowArray, Dimension, IxDyn};
+use num::NumCast;
 use paste::paste;
 use polars::series::Series;
 
@@ -595,7 +596,7 @@ impl<D: Dimension> ArrayConvert<Array<f32, D>> for DynArray {
             DynArray::U8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::U16(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::Bool(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            _ => bail!("Cannot convert to f32 Array"),
+            _ => bail!("Cannot convert {:?} to f32 Array", self),
         }
     }
 }
@@ -607,12 +608,14 @@ impl<D: Dimension> ArrayConvert<Array<f64, D>> for DynArray {
             DynArray::I8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::I16(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::I32(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
+            DynArray::I64(data) => Ok(data.mapv(|x| NumCast::from(x).unwrap()).into_dimensionality()?),
             DynArray::U8(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::U16(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::U32(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
+            DynArray::U64(data) => Ok(data.mapv(|x| NumCast::from(x).unwrap()).into_dimensionality()?),
             DynArray::F32(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
             DynArray::Bool(data) => Ok(data.mapv(|x| x.into()).into_dimensionality()?),
-            _ => bail!("Cannot convert to f64 Array"),
+            _ => bail!("Cannot convert {:?} to f64 Array", self),
         }
     }
 }
@@ -621,7 +624,7 @@ impl<D: Dimension> ArrayConvert<Array<bool, D>> for DynArray {
     fn try_convert(self) -> Result<Array<bool, D>> {
         match self {
             DynArray::Bool(data) => Ok(data.into_dimensionality()?),
-            _ => bail!("Cannot convert to bool Array"),
+            _ => bail!("Cannot convert {:?} to bool Array", self),
         }
     }
 }
