@@ -11,10 +11,10 @@ keywords = ["data"]
 
 [dependencies]
 pyanndata = { workspace = true }
-pyo3-log = "0.12"
+pyo3-log = "0.13"
 
 [dependencies.pyo3]
-version = "0.25"
+version = "0.27"
 features = ["multiple-pymethods"]
 
 [features]

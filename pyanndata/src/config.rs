@@ -109,7 +109,7 @@ pub fn py_set_default_write_config(config: Bound<'_, PyDict>) -> PyResult<()> {
 /// None
 #[pyfunction]
 #[pyo3(name = "get_write_options")]
-pub fn py_get_default_write_config(py: Python) -> PyResult<PyObject> {
+pub fn py_get_default_write_config<'py>(py: Python<'py>) -> PyResult<Bound<'py, PyDict>> {
     let config = get_default_write_config();
 
     let compression: Option<PyCompression> = config.compression.map(|c| PyCompression { inner: c });
@@ -119,5 +119,5 @@ pub fn py_get_default_write_config(py: Python) -> PyResult<PyObject> {
     dict.set_item("compression", compression)?;
     dict.set_item("block_size", block_size)?;
 
-    Ok(dict.into())
+    Ok(dict)
 }

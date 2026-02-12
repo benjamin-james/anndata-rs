@@ -65,12 +65,12 @@ pub(super) fn to_array(ob: &Bound<'_, PyAny>) -> PyResult<DynArray> {
     let arr = if dtype == "U" || dtype == "S" {
         ob.getattr("astype")?
             .call1(("object",))?
-            .extract::<PyReadonlyArrayDyn<PyObject>>()?
+            .extract::<PyReadonlyArrayDyn<Py<PyAny>>>()?
             .as_array()
             .map(|x| x.extract::<String>(py).unwrap())
             .into()
     } else if dtype == "O" {
-        ob.extract::<PyReadonlyArrayDyn<PyObject>>()?
+        ob.extract::<PyReadonlyArrayDyn<Py<PyAny>>>()?
             .as_array()
             .map(|x| x.extract::<String>(py).unwrap())
             .into()

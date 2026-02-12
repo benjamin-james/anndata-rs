@@ -458,12 +458,12 @@ mod csc_matrix_index_tests {
         let nnz: usize = 1000;
 
         for _ in 0..50 {
-            let ridx = Array::random(220, Uniform::new(0, n)).to_vec();
-            let cidx = Array::random(100, Uniform::new(0, m)).to_vec();
+            let ridx = Array::random(220, Uniform::new(0, n).unwrap()).to_vec();
+            let cidx = Array::random(100, Uniform::new(0, m).unwrap()).to_vec();
 
-            let row_indices = Array::random(nnz, Uniform::new(0, n)).to_vec();
-            let col_indices = Array::random(nnz, Uniform::new(0, m)).to_vec();
-            let values = Array::random(nnz, Uniform::new(-10000, 10000)).to_vec();
+            let row_indices = Array::random(nnz, Uniform::new(0, n).unwrap()).to_vec();
+            let col_indices = Array::random(nnz, Uniform::new(0, m).unwrap()).to_vec();
+            let values = Array::random(nnz, Uniform::new(-10000, 10000).unwrap()).to_vec();
 
             let csc_matrix: CscMatrix<i64> =
                 (&CooMatrix::try_from_triplets(n, m, row_indices, col_indices, values).unwrap()).into();

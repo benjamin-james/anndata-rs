@@ -45,7 +45,7 @@ pub fn to_select_info(ob: &Bound<'_, PyAny>, shape: &Shape) -> PyResult<SelectIn
 ///
 /// A `SelectInfoElem` representing the selection operation.
 pub fn to_select_elem(ob: &Bound<'_, PyAny>, length: usize) -> PyResult<SelectInfoElem> {
-    let select = if let Ok(slice) = ob.downcast::<pyo3::types::PySlice>() {
+    let select = if let Ok(slice) = ob.cast::<pyo3::types::PySlice>() {
         let s = slice.indices(length.try_into()?)?;
         ndarray::Slice { 
             start: s.start,
