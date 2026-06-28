@@ -12,6 +12,7 @@ use ndarray_rand::RandomExt;
 use ndarray_rand::rand_distr::Uniform;
 use ndarray_rand::rand_distr::uniform::SampleUniform;
 use num::Zero;
+use polars::df;
 use proptest::prelude::*;
 use proptest::strategy::BoxedStrategy;
 use rand::seq::IteratorRandom;
@@ -545,9 +546,8 @@ where
 // View test fixtures
 //-----------------------------------------------------------------------------
 
-/// Create a small `AnnData` on disk with a dense integer `X` and named
-/// obs/var axes. No `obs`/`var` DataFrames or mappings are populated here;
-/// later tests extend the setup as needed.
+/// Create a small `AnnData` on disk with a dense integer `X`, named obs/var
+/// axes, and a single categorical `obs` column.
 pub fn create_test_adata<B: Backend>(
     dir: impl AsRef<Path>,
     name: &str,
@@ -561,5 +561,12 @@ pub fn create_test_adata<B: Backend>(
     adata.set_obs_names(obs_names).unwrap();
     let var_names: DataFrameIndex = (0..adata.n_vars()).map(|i| format!("gene_{i}")).collect();
     adata.set_var_names(var_names).unwrap();
+
+    let obs = df! {
+        "a_test" => (0..n_obs).map(|i| if i % 2 == 0 { "a" } else { "b" }).collect::<Vec<_>>(),
+    }
+    .unwrap();
+    adata.set_obs(obs).unwrap();
+
     adata
 }

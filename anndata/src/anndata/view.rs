@@ -7,9 +7,11 @@
 //! (`var`) axes and applies them on read.
 //!
 
-use crate::Backend;
-use crate::data::{DataFrameIndex, SelectInfoElem, SelectInfoElemBounds};
-use crate::traits::AnnDataOp;
+use crate::data::{ArrayData, DataFrameIndex, SelectInfoElem, SelectInfoElemBounds};
+use crate::traits::{AnnDataOp, ArrayElemOp};
+use crate::{ArrayElem, Backend, DataFrameElem};
+use anyhow::Result;
+use polars::prelude::DataFrame;
 
 /// Return the number of elements selected by `sel` within an axis of length
 /// `parent_len`.
@@ -35,10 +37,11 @@ pub struct AnnDataView<B: Backend> {
     var_sel: SelectInfoElem,
     obs_names_idx: DataFrameIndex,
     var_names_idx: DataFrameIndex,
-    // Data elements (x, obs, var, obsm, ...) are added in later commits as
-    // the corresponding `read_*` methods are introduced.
-    // The `B` parameter is kept so the public type `AnnDataView<B>` is stable.
-    _phantom: std::marker::PhantomData<B>,
+    x: ArrayElem<B>,
+    obs: DataFrameElem<B>,
+    var: DataFrameElem<B>,
+    // Further data elements (obsm, obsp, varm, ...) are added in later
+    // commits as the corresponding `read_*` methods are introduced.
 }
 
 impl<B: Backend> std::fmt::Display for AnnDataView<B> {
@@ -67,9 +70,11 @@ impl<B: Backend> AnnDataView<B> {
             parent_n_vars: adata.n_vars(),
             obs_names_idx: adata.obs_names(),
             var_names_idx: adata.var_names(),
+            x: adata.x.clone(),
+            obs: adata.obs.clone(),
+            var: adata.var.clone(),
             obs_sel,
             var_sel,
-            _phantom: std::marker::PhantomData,
         }
     }
 
@@ -116,6 +121,35 @@ impl<B: Backend> AnnDataView<B> {
     /// The selected variable names.
     pub fn var_names(&self) -> DataFrameIndex {
         self.var_names_idx.select(&self.var_sel)
+    }
+
+    /// Read the selected `X` matrix.
+    ///
+    /// Returns `None` if the parent has no `X`. The selection is applied with
+    /// full two-dimensional dimensionality (`[obs_sel, var_sel]`).
+    pub fn read_x(&self) -> Result<Option<ArrayData>> {
+        self.x
+            .slice::<ArrayData, _>(&[self.obs_sel.clone(), self.var_sel.clone()])
+    }
+
+    /// Read the selected `obs` DataFrame (rows sliced by `obs_sel`).
+    ///
+    /// Returns an empty DataFrame if the parent has no `obs`.
+    pub fn read_obs(&self) -> Result<DataFrame> {
+        if self.obs.is_none() {
+            return Ok(DataFrame::empty());
+        }
+        self.obs.inner().select_axis(0, &self.obs_sel)
+    }
+
+    /// Read the selected `var` DataFrame (rows sliced by `var_sel`).
+    ///
+    /// Returns an empty DataFrame if the parent has no `var`.
+    pub fn read_var(&self) -> Result<DataFrame> {
+        if self.var.is_none() {
+            return Ok(DataFrame::empty());
+        }
+        self.var.inner().select_axis(0, &self.var_sel)
     }
 }
 

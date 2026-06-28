@@ -3,7 +3,7 @@ pub use common::*;
 
 use anndata::concat::{JoinType, concat};
 use anndata::{data::CsrNonCanonical, *};
-use data::{ArrayConvert, SelectInfoElem};
+use data::{ArrayConvert, DynArray, SelectInfoElem};
 use nalgebra_sparse::{CooMatrix, CsrMatrix};
 use ndarray::Array2;
 use proptest::prelude::*;
@@ -266,5 +266,119 @@ pub fn test_view_full_selection_shape<B: Backend>() {
         assert_eq!(view.shape(), (3, 3));
         assert_eq!(view.parent_n_obs(), 3);
         assert_eq!(view.parent_n_vars(), 3);
+    })
+}
+
+pub fn test_view_read_x<B: Backend>() {
+    with_tmp_dir(|dir| {
+        let adata = create_test_adata::<B>(
+            &dir,
+            "test_x",
+            Array2::from_shape_vec((3, 3), vec![1, 2, 0, 4, 5, 0, 7, 8, 0]).unwrap(),
+        );
+
+        let view = adata.view((..2).into(), (..2).into());
+        let x_view = view.read_x().unwrap().unwrap();
+
+        match x_view {
+            ArrayData::Array(DynArray::I32(arr)) => {
+                assert_eq!(arr.shape(), &[2, 2]);
+                assert_eq!(arr[[0, 0]], 1);
+                assert_eq!(arr[[0, 1]], 2);
+                assert_eq!(arr[[1, 0]], 4);
+                assert_eq!(arr[[1, 1]], 5);
+            }
+            _ => panic!("unexpected array type"),
+        }
+    })
+}
+
+pub fn test_view_read_obs<B: Backend>() {
+    with_tmp_dir(|dir| {
+        let adata = create_test_adata::<B>(
+            &dir,
+            "test_obs",
+            Array2::from_shape_vec((3, 3), vec![1, 2, 0, 4, 5, 0, 7, 8, 0]).unwrap(),
+        );
+
+        let view = adata.view((1..3).into(), SelectInfoElem::full());
+        let obs = view.read_obs().unwrap();
+        assert_eq!(obs.height(), 2);
+    })
+}
+
+pub fn test_view_read_var<B: Backend>() {
+    with_tmp_dir(|dir| {
+        let adata = create_test_adata::<B>(
+            &dir,
+            "test_var",
+            Array2::from_shape_vec((3, 4), vec![1, 2, 0, 0, 4, 5, 0, 0, 7, 8, 0, 0]).unwrap(),
+        );
+
+        let view = adata.view(SelectInfoElem::full(), (1..3).into());
+        let var = view.read_var().unwrap();
+        assert_eq!(var.height(), 2);
+    })
+}
+
+pub fn test_view_index_selection<B: Backend>() {
+    with_tmp_dir(|dir| {
+        let adata = create_test_adata::<B>(
+            &dir,
+            "test_index",
+            Array2::from_shape_vec(
+                (5, 3),
+                vec![1, 2, 0, 4, 5, 0, 7, 8, 0, 10, 11, 0, 13, 14, 0],
+            )
+            .unwrap(),
+        );
+
+        let view = adata.view(
+            SelectInfoElem::from(vec![0, 2, 4]),
+            SelectInfoElem::from(vec![0, 2]),
+        );
+        assert_eq!(view.shape(), (3, 2));
+
+        let x = view.read_x().unwrap().unwrap();
+        match x {
+            ArrayData::Array(DynArray::I32(arr)) => {
+                assert_eq!(arr[[0, 0]], 1);
+                assert_eq!(arr[[0, 1]], 0);
+                assert_eq!(arr[[1, 0]], 7);
+                assert_eq!(arr[[1, 1]], 0);
+                assert_eq!(arr[[2, 0]], 13);
+                assert_eq!(arr[[2, 1]], 0);
+            }
+            _ => panic!("unexpected array type"),
+        }
+    })
+}
+
+pub fn test_view_duplicate_index<B: Backend>() {
+    with_tmp_dir(|dir| {
+        let adata = create_test_adata::<B>(
+            &dir,
+            "test_dup",
+            Array2::from_shape_vec((3, 3), vec![1, 2, 0, 4, 5, 0, 7, 8, 0]).unwrap(),
+        );
+
+        let view = adata.view(
+            SelectInfoElem::from(vec![1, 2, 1]),
+            SelectInfoElem::from(vec![0, 1]),
+        );
+        assert_eq!(view.shape(), (3, 2));
+
+        let x = view.read_x().unwrap().unwrap();
+        match x {
+            ArrayData::Array(DynArray::I32(arr)) => {
+                assert_eq!(arr[[0, 0]], 4);
+                assert_eq!(arr[[0, 1]], 5);
+                assert_eq!(arr[[1, 0]], 7);
+                assert_eq!(arr[[1, 1]], 8);
+                assert_eq!(arr[[2, 0]], 4);
+                assert_eq!(arr[[2, 1]], 5);
+            }
+            _ => panic!("unexpected array type"),
+        }
     })
 }
