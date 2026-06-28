@@ -1,8 +1,10 @@
 mod dataset;
 pub(crate) mod elem_io;
+pub mod view;
 
 pub use dataset::{AnnDataSet, StackedAnnData};
 use elem_io::{new_mapping, open_layers, open_obsm, open_obsp, open_varm, open_varp};
+pub use view::AnnDataView;
 
 use crate::{
     ArrayElemOp, AxisArraysOp, ElemCollectionOp,
@@ -436,5 +438,10 @@ impl<B: Backend> AnnData<B> {
         }
 
         Ok(())
+    }
+
+    /// Create a read-only view of the AnnData with the given selection.
+    pub fn view(&self, obs_sel: SelectInfoElem, var_sel: SelectInfoElem) -> AnnDataView<B> {
+        AnnDataView::new(self, obs_sel, var_sel)
     }
 }

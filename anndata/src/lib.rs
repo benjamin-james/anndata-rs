@@ -7,7 +7,7 @@ mod macros;
 pub mod reader;
 pub mod traits;
 
-pub use crate::anndata::{AnnData, AnnDataSet, StackedAnnData};
+pub use crate::anndata::{AnnData, AnnDataSet, AnnDataView, StackedAnnData};
 pub use backend::Backend;
 pub use container::{
     ArrayElem, AxisArrays, DataFrameElem, Elem, ElemCollection, StackedArrayElem,

@@ -3,7 +3,7 @@ pub use common::*;
 
 use anndata::concat::{JoinType, concat};
 use anndata::{data::CsrNonCanonical, *};
-use data::ArrayConvert;
+use data::{ArrayConvert, SelectInfoElem};
 use nalgebra_sparse::{CooMatrix, CsrMatrix};
 use ndarray::Array2;
 use proptest::prelude::*;
@@ -185,4 +185,86 @@ pub fn test_concat<B: Backend>() {
             concat::<_, _, String>(&adatas, JoinType::Outer, None, None, &out).unwrap();
         })
     });
+}
+
+//-----------------------------------------------------------------------------
+// View tests
+//-----------------------------------------------------------------------------
+
+pub fn test_view_shape<B: Backend>() {
+    with_tmp_dir(|dir| {
+        let adata = create_test_adata::<B>(
+            &dir,
+            "test_shape",
+            Array2::from_shape_vec((3, 3), vec![1, 2, 0, 4, 5, 0, 7, 8, 0]).unwrap(),
+        );
+
+        let view = adata.view((..2).into(), (..2).into());
+        assert_eq!(view.shape(), (2, 2));
+        assert_eq!(view.n_obs(), 2);
+        assert_eq!(view.n_vars(), 2);
+        assert_eq!(view.parent_n_obs(), 3);
+        assert_eq!(view.parent_n_vars(), 3);
+    })
+}
+
+pub fn test_view_obs_names<B: Backend>() {
+    with_tmp_dir(|dir| {
+        let adata = create_test_adata::<B>(
+            &dir,
+            "test_names",
+            Array2::from_shape_vec((3, 3), vec![1, 2, 0, 4, 5, 0, 7, 8, 0]).unwrap(),
+        );
+
+        let view = adata.view((1..3).into(), SelectInfoElem::full());
+        let names: Vec<String> = view.obs_names().into_iter().collect();
+        assert_eq!(names, vec!["test_names_cell_1", "test_names_cell_2"]);
+    })
+}
+
+pub fn test_view_var_names<B: Backend>() {
+    with_tmp_dir(|dir| {
+        let adata = create_test_adata::<B>(
+            &dir,
+            "test_vnames",
+            Array2::from_shape_vec((3, 4), vec![1, 2, 0, 0, 4, 5, 0, 0, 7, 8, 0, 0]).unwrap(),
+        );
+
+        let view = adata.view(SelectInfoElem::full(), (1..3).into());
+        let names: Vec<String> = view.var_names().into_iter().collect();
+        assert_eq!(names, vec!["gene_1", "gene_2"]);
+    })
+}
+
+pub fn test_view_empty_selection<B: Backend>() {
+    with_tmp_dir(|dir| {
+        let adata = create_test_adata::<B>(
+            &dir,
+            "test_empty",
+            Array2::from_shape_vec((3, 3), vec![1, 2, 0, 4, 5, 0, 7, 8, 0]).unwrap(),
+        );
+
+        let view = adata.view(
+            SelectInfoElem::from(Vec::<usize>::new()),
+            SelectInfoElem::full(),
+        );
+        assert_eq!(view.n_obs(), 0);
+        assert_eq!(view.n_vars(), 3);
+        assert_eq!(view.parent_n_obs(), 3);
+    })
+}
+
+pub fn test_view_full_selection_shape<B: Backend>() {
+    with_tmp_dir(|dir| {
+        let adata = create_test_adata::<B>(
+            &dir,
+            "test_full",
+            Array2::from_shape_vec((3, 3), vec![1, 2, 0, 4, 5, 0, 7, 8, 0]).unwrap(),
+        );
+
+        let view = adata.view(SelectInfoElem::full(), SelectInfoElem::full());
+        assert_eq!(view.shape(), (3, 3));
+        assert_eq!(view.parent_n_obs(), 3);
+        assert_eq!(view.parent_n_vars(), 3);
+    })
 }

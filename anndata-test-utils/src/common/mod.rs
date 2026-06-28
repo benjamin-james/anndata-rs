@@ -7,7 +7,7 @@ use itertools::Itertools;
 use nalgebra::base::DMatrix;
 use nalgebra::{ClosedAddAssign, Scalar};
 use nalgebra_sparse::{coo::CooMatrix, csc::CscMatrix, csr::CsrMatrix};
-use ndarray::{Array, Axis, Dimension, RemoveAxis};
+use ndarray::{Array, Array2, Axis, Dimension, RemoveAxis};
 use ndarray_rand::RandomExt;
 use ndarray_rand::rand_distr::Uniform;
 use ndarray_rand::rand_distr::uniform::SampleUniform;
@@ -539,4 +539,27 @@ where
             .deref()
             .select(Axis(0), (i..j).collect::<Vec<_>>().as_slice())
     })
+}
+
+//-----------------------------------------------------------------------------
+// View test fixtures
+//-----------------------------------------------------------------------------
+
+/// Create a small `AnnData` on disk with a dense integer `X` and named
+/// obs/var axes. No `obs`/`var` DataFrames or mappings are populated here;
+/// later tests extend the setup as needed.
+pub fn create_test_adata<B: Backend>(
+    dir: impl AsRef<Path>,
+    name: &str,
+    x_data: Array2<i32>,
+) -> AnnData<B> {
+    let path = dir.as_ref().join(name);
+    let adata = AnnData::<B>::new(&path).unwrap();
+    adata.set_x(ArrayData::from(x_data)).unwrap();
+    let n_obs = adata.n_obs();
+    let obs_names: DataFrameIndex = (0..n_obs).map(|i| format!("{name}_cell_{i}")).collect();
+    adata.set_obs_names(obs_names).unwrap();
+    let var_names: DataFrameIndex = (0..adata.n_vars()).map(|i| format!("gene_{i}")).collect();
+    adata.set_var_names(var_names).unwrap();
+    adata
 }
